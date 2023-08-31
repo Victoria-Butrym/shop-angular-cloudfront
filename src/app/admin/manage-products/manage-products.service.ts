@@ -1,12 +1,16 @@
 import { Injectable, Injector } from '@angular/core';
 import { EMPTY, Observable } from 'rxjs';
 import { ApiService } from '../../core/api.service';
-import { switchMap } from 'rxjs/operators';
+import { switchMap, map } from 'rxjs/operators';
 
 @Injectable()
 export class ManageProductsService extends ApiService {
   constructor(injector: Injector) {
     super(injector);
+  }
+
+  private getBasicToken(): string | null {
+    return localStorage.getItem('authorization_token');
   }
 
   uploadProductsCSV(file: File): Observable<unknown> {
@@ -18,6 +22,7 @@ export class ManageProductsService extends ApiService {
     }
 
     return this.getPreSignedUrl(file.name).pipe(
+      map((url: any) => url.preassignedUrl),
       switchMap((url) =>
         this.http.put(url, file, {
           headers: {
@@ -31,8 +36,12 @@ export class ManageProductsService extends ApiService {
 
   private getPreSignedUrl(fileName: string): Observable<string> {
     const url = this.getUrl('import', 'import');
+    const headers: { [key: string]: string } = {};
+    const token = this.getBasicToken();
+    token && (headers.Authorization = `Basic ${token}`)
 
     return this.http.get<string>(url, {
+      headers,
       params: {
         name: fileName,
       },
